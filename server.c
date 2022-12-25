@@ -13,10 +13,14 @@
 #include <string.h> // strcmp
 #define MY_PORT_ID 8008 /* a number > 5000 */
 
+#ifndef SRC_DIR
+#define SRC_DIR "server_source"
+#endif
+
 int sockid;
 int running = 1;
 
-char* srcDir = "server_source";
+char* srcDir = SRC_DIR;
 
 void createConnection()
 {
@@ -81,13 +85,42 @@ void sendList(int destSockId)
 
 void sendFile(int destSockId, char* fileName)
 {
- // TODO
+    size_t n, m;
+    char filePath[128];
+    int errCode;
+    sprintf(filePath, "%s/%s", srcDir, fileName);
+    int fd = open(filePath, O_RDONLY);
+    if(fd < 0)
+    {
+        errCode = 1;
+        printf("File not found!\n");
+        write(destSockId, &errCode, sizeof(errCode));
+        return;
+    }
+
+    errCode = 0; 
+    write(destSockId, &errCode, sizeof(errCode));
+
+    printf("Filepath: %s\n", filePath);
+
+    unsigned char buff[8192];
+    do {
+        bzero((char*)&buff, sizeof(buff));
+        n = read(fd, &buff, sizeof(buff));        
+        //printf("[%s]\n", buff);
+        if(n) m = write(destSockId, buff, n);
+        else m = 0;
+    }   while (n > 0 && n == m);
+
+    close(fd);
 }
 
 int main()
 {
     int newsockid;
     char msg[255];
+
+    printf("Source dir: %s\n", srcDir);
 
     createConnection();   
 
@@ -119,5 +152,7 @@ int main()
 
         close(newsockid);
     }
+
+    closeConnection();
     return 0;
 } 

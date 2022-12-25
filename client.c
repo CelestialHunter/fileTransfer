@@ -7,10 +7,12 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <netdb.h>
+#include <fcntl.h> // open file
 
 #define MY_PORT_ID 8008 /* numar > 5000 */
 
 int sockid;
+char destDir[] = "client_dest";
 
 char* getServHostAddr()
 {
@@ -98,12 +100,42 @@ void downloadFile(char* fileName)
 {
     char fn[255];
     strcpy(fn, fileName);
-    // TODO
+
     if ( (write(sockid, &fn, sizeof(fn))) < 0)
     {
         printf("Eroare scriere in socket");
         exit(-1);
     }
+
+    int errCode;
+
+    read(sockid, &errCode, sizeof(errCode));
+
+    if(errCode == 1)
+    {
+        printf("File not found!\n");
+        exit(-1);
+    }
+
+    char filePath[128];
+    sprintf(filePath, "%s/%s", destDir, fn);
+
+    int fd = open(filePath, O_WRONLY | O_CREAT | O_TRUNC);
+    if(fd < 0)
+    {
+        perror("Could not open file to write!\n");
+        printf("Path: %s\n", filePath);
+        exit(-1);
+    }
+    int bytesRead, bytesWritten;
+    char buff[8192];
+    
+    while(bytesRead = read(sockid, buff, sizeof(buff)), bytesRead > 0)
+    {
+        write(fd, buff, bytesRead);
+    }
+
+    close(fd);
 }
 
 
